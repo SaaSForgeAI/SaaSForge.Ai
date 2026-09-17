@@ -1,6 +1,19 @@
 import { DEFAULT_BUILD_STEPS } from '@/utils/constants';
 import { randomId } from '@/lib/crypto';
+import { getPrismaClient, shouldUsePostgresStorage } from '@/lib/prisma';
 import { readDb, updateDb } from '@/lib/store';
+import {
+  addDomainInPostgres,
+  connectIntegrationInPostgres,
+  createApiKeyInPostgres,
+  createDeploymentInPostgres,
+  createProjectInPostgres,
+  disconnectIntegrationInPostgres,
+  inviteMemberInPostgres,
+  revokeApiKeyInPostgres,
+  submitBuilderMessageInPostgres,
+  updateSubscriptionInPostgres
+} from '@/services/platform-postgres';
 import { slugify } from '@/utils/format';
 import type { BillingInterval, BillingPlan, BuildTask, PlatformData, Project, Role } from '@/types';
 
@@ -42,6 +55,12 @@ export async function createProject(input: {
   maturity: Project['maturity'];
   style: Project['style'];
 }): Promise<Project> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    return createProjectInPostgres(prisma, input);
+  }
+
   const timestamp = new Date().toISOString();
   const project: Project = {
     id: randomId('proj'),
@@ -132,6 +151,13 @@ export async function submitBuilderMessage(input: {
   projectId: string;
   prompt: string;
 }): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await submitBuilderMessageInPostgres(prisma, input);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
 
   await updateDb((db) => {
@@ -221,6 +247,13 @@ function buildAssistantResponse(prompt: string): string {
 }
 
 export async function createDeployment(projectId: string, environment: 'preview' | 'staging' | 'production'): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await createDeploymentInPostgres(prisma, projectId, environment);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     const project = db.projects.find((item) => item.id === projectId);
@@ -242,6 +275,13 @@ export async function createDeployment(projectId: string, environment: 'preview'
 }
 
 export async function connectIntegration(organizationId: string, key: string): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await connectIntegrationInPostgres(prisma, organizationId, key);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     const integration = db.integrations.find((item) => item.organizationId === organizationId && item.key === key);
@@ -254,6 +294,13 @@ export async function connectIntegration(organizationId: string, key: string): P
 }
 
 export async function disconnectIntegration(organizationId: string, key: string): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await disconnectIntegrationInPostgres(prisma, organizationId, key);
+    return;
+  }
+
   await updateDb((db) => {
     const integration = db.integrations.find((item) => item.organizationId === organizationId && item.key === key);
     if (integration) {
@@ -265,6 +312,13 @@ export async function disconnectIntegration(organizationId: string, key: string)
 }
 
 export async function updateSubscription(organizationId: string, plan: BillingPlan, interval: BillingInterval): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await updateSubscriptionInPostgres(prisma, organizationId, plan, interval);
+    return;
+  }
+
   const pricing = {
     Free: { monthly: 0, yearly: 0, credits: 10000 },
     Pro: { monthly: 39, yearly: 31, credits: 100000 },
@@ -301,6 +355,13 @@ export async function updateSubscription(organizationId: string, plan: BillingPl
 }
 
 export async function inviteMember(organizationId: string, email: string, role: Role): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await inviteMemberInPostgres(prisma, organizationId, email, role);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     db.auditLogs.unshift({
@@ -316,6 +377,13 @@ export async function inviteMember(organizationId: string, email: string, role: 
 }
 
 export async function addDomain(projectId: string, host: string): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await addDomainInPostgres(prisma, projectId, host);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     const project = db.projects.find((item) => item.id === projectId);
@@ -339,6 +407,19 @@ export async function createApiKey(organizationId: string, name: string, permiss
   const prefix = secret.slice(0, 12);
   const timestamp = new Date().toISOString();
 
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await createApiKeyInPostgres(prisma, {
+      organizationId,
+      name,
+      permissions,
+      prefix,
+      secretHash: hashSecret(secret)
+    });
+    return secret;
+  }
+
   await updateDb((db) => {
     db.apiKeys.unshift({
       id: randomId('key'),
@@ -355,6 +436,13 @@ export async function createApiKey(organizationId: string, name: string, permiss
 }
 
 export async function revokeApiKey(organizationId: string, keyId: string): Promise<void> {
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await revokeApiKeyInPostgres(prisma, organizationId, keyId);
+    return;
+  }
+
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     const key = db.apiKeys.find((item) => item.organizationId === organizationId && item.id === keyId);

@@ -29,6 +29,7 @@ Zero-config local persistence for local preview and fallback sandbox usage.
 
 ```env
 DEMO_MODE=true
+ENABLE_DEMO_SEED=true
 STORAGE_PROVIDER=demo
 ```
 
@@ -37,6 +38,7 @@ Production-ready persistence using Prisma and PostgreSQL.
 
 ```env
 DEMO_MODE=false
+ENABLE_DEMO_SEED=true
 STORAGE_PROVIDER=postgres
 DATABASE_URL=postgresql://POOLER-URL
 DIRECT_URL=postgresql://DIRECT-DB-URL

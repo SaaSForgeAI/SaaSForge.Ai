@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { createSeedData } from '@/database/seed';
+import { env } from '@/lib/env';
 import type { PlatformData } from '@/types';
 
 let seedPromise: Promise<void> | null = null;
@@ -20,7 +21,7 @@ export async function ensurePostgresSeed(prisma: PrismaClient): Promise<void> {
 
   seedPromise = (async () => {
     const organizationCount = await prisma.organization.count();
-    if (organizationCount === 0) {
+    if (organizationCount === 0 && env.enableDemoSeed) {
       await writePostgresSnapshot(prisma, createSeedData());
     }
   })();

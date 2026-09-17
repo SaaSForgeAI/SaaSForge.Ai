@@ -2,6 +2,12 @@
 
 import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
+import {
+  updateOnboardingState,
+  updateOrganizationProfile,
+  updateUserProfile
+} from '@/lib/postgres-auth';
+import { getPrismaClient, shouldUsePostgresStorage } from '@/lib/prisma';
 import { updateDb } from '@/lib/store';
 import {
   addDomain,
@@ -35,19 +41,29 @@ export async function completeOnboardingAction(formData: FormData): Promise<void
     style
   });
 
-  await updateDb((db) => {
-    const currentUser = db.users.find((item) => item.id === user.id);
-    if (currentUser) currentUser.onboardingCompleted = true;
-    db.notifications.unshift({
-      id: randomId('not'),
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await updateOnboardingState(prisma, {
       userId: user.id,
-      title: 'Your SaaS is generating',
-      body: `${project.name} is now available in the AI Builder with a live preview.`,
-      type: 'build',
-      createdAt: new Date().toISOString(),
-      cta: `/workspace/builder?project=${project.id}`
+      projectId: project.id,
+      projectName: project.name
     });
-  });
+  } else {
+    await updateDb((db) => {
+      const currentUser = db.users.find((item) => item.id === user.id);
+      if (currentUser) currentUser.onboardingCompleted = true;
+      db.notifications.unshift({
+        id: randomId('not'),
+        userId: user.id,
+        title: 'Your SaaS is generating',
+        body: `${project.name} is now available in the AI Builder with a live preview.`,
+        type: 'build',
+        createdAt: new Date().toISOString(),
+        cta: `/workspace/builder?project=${project.id}`
+      });
+    });
+  }
 
   redirect(`/workspace/builder?project=${project.id}`);
 }

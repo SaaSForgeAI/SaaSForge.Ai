@@ -10,6 +10,10 @@ export function isPostgresStorageEnabled(): boolean {
   return env.storageProvider === 'postgres' && Boolean(process.env.DATABASE_URL);
 }
 
+export function shouldUsePostgresStorage(): boolean {
+  return isPostgresStorageEnabled() && !env.demoMode;
+}
+
 export function getPrismaClient(): PrismaClient | null {
   if (!isPostgresStorageEnabled()) return null;
 

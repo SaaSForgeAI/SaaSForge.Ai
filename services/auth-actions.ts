@@ -1,7 +1,21 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createPublicToken, createSession, destroySession, hashPassword, verifyPassword } from '@/lib/auth';
+import {
+  createPublicToken,
+  createSession,
+  destroySession,
+  hashPassword,
+  verifyPassword
+} from '@/lib/auth';
+import {
+  createWorkspaceUser,
+  findLoginCandidate,
+  resetPasswordByToken,
+  setResetToken,
+  verifyEmailByToken
+} from '@/lib/postgres-auth';
+import { getPrismaClient, shouldUsePostgresStorage } from '@/lib/prisma';
 import { randomId } from '@/lib/crypto';
 import { readDb, updateDb } from '@/lib/store';
 import { slugify } from '@/utils/format';
@@ -15,10 +29,33 @@ function normalizeNextPath(input: string): string {
   return input;
 }
 
+function usePostgres(): boolean {
+  return shouldUsePostgresStorage();
+}
+
 export async function loginAction(formData: FormData): Promise<void> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
   const next = normalizeNextPath(String(formData.get('next') || '/workspace'));
+
+  if (usePostgres()) {
+    const prisma = getPrismaClient();
+    if (!prisma) redirect(`/auth/login?${qs({ error: 'Database client unavailable.', next })}`);
+
+    const context = await findLoginCandidate(prisma, email);
+    if (!context || !verifyPassword(password, context.user.passwordHash)) {
+      redirect(`/auth/login?${qs({ error: 'Invalid email or password.', next })}`);
+    }
+
+    await createSession({
+      userId: context.user.id,
+      organizationId: context.organization.id,
+      role: context.membership.role,
+      email: context.user.email
+    });
+
+    redirect(context.user.onboardingCompleted ? next : '/onboarding');
+  }
 
   const db = await readDb();
   const user = db.users.find((item) => item.email === email);
@@ -54,6 +91,33 @@ export async function registerAction(formData: FormData): Promise<void> {
 
   if (!name || !email || password.length < 8) {
     redirect('/auth/register?error=Please provide a valid name, email and 8+ character password.');
+  }
+
+  if (usePostgres()) {
+    const prisma = getPrismaClient();
+    if (!prisma) redirect('/auth/register?error=Database client unavailable.');
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      redirect('/auth/register?error=An account already exists for this email.');
+    }
+
+    const verificationToken = createPublicToken();
+    const context = await createWorkspaceUser(prisma, {
+      name,
+      email,
+      passwordHash: hashPassword(password),
+      verificationToken
+    });
+
+    await createSession({
+      userId: context.user.id,
+      organizationId: context.organization.id,
+      role: context.membership.role,
+      email: context.user.email
+    });
+
+    redirect(`/onboarding?welcome=${encodeURIComponent('Account created. Finish onboarding to generate your first SaaS.')}`);
   }
 
   const existing = await readDb();
@@ -181,17 +245,12 @@ export async function registerAction(formData: FormData): Promise<void> {
     });
   });
 
-  const db = await readDb();
-  const user = db.users.find((item) => item.email === email);
-  const membership = db.memberships.find((item) => item.userId === user?.id && item.organizationId === user?.primaryOrganizationId);
-  if (user && membership) {
-    await createSession({
-      userId: user.id,
-      organizationId: user.primaryOrganizationId,
-      role: membership.role,
-      email: user.email
-    });
-  }
+  await createSession({
+    userId,
+    organizationId: orgId,
+    role: 'Owner',
+    email
+  });
 
   redirect(`/onboarding?welcome=${encodeURIComponent('Account created. Finish onboarding to generate your first SaaS.')}`);
 }
@@ -199,6 +258,14 @@ export async function registerAction(formData: FormData): Promise<void> {
 export async function forgotPasswordAction(formData: FormData): Promise<void> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const token = createPublicToken();
+
+  if (usePostgres()) {
+    const prisma = getPrismaClient();
+    if (prisma) {
+      await setResetToken(prisma, email, token);
+    }
+    redirect(`/auth/forgot-password?success=${encodeURIComponent('If this email exists, a reset token has been prepared for the sandbox demo.')}`);
+  }
 
   await updateDb((db) => {
     const user = db.users.find((item) => item.email === email);
@@ -228,6 +295,12 @@ export async function resetPasswordAction(formData: FormData): Promise<void> {
     redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&error=${encodeURIComponent('Password must be at least 8 characters.')}`);
   }
 
+  if (usePostgres()) {
+    const prisma = getPrismaClient();
+    const updated = prisma ? await resetPasswordByToken(prisma, token, hashPassword(password)) : false;
+    redirect(updated ? '/auth/login?success=Password updated. Please sign in.' : '/auth/reset-password?error=Invalid or expired reset token.');
+  }
+
   let updated = false;
   await updateDb((db) => {
     const user = db.users.find((item) => item.resetToken === token);
@@ -244,6 +317,13 @@ export async function resetPasswordAction(formData: FormData): Promise<void> {
 
 export async function verifyEmailAction(formData: FormData): Promise<void> {
   const token = String(formData.get('token') || '').trim();
+
+  if (usePostgres()) {
+    const prisma = getPrismaClient();
+    const updated = prisma ? await verifyEmailByToken(prisma, token) : false;
+    redirect(updated ? '/auth/login?success=Email verified. You can now sign in.' : '/auth/verify-email?error=Verification token is invalid.');
+  }
+
   let updated = false;
   await updateDb((db) => {
     const user = db.users.find((item) => item.verificationToken === token);

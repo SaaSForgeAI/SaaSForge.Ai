@@ -2,6 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { randomId, signPayload, verifySecret, hashSecret } from '@/lib/crypto';
+import { getPrismaClient, shouldUsePostgresStorage } from '@/lib/prisma';
+import { getSessionContextFromPostgres } from '@/lib/postgres-auth';
 import { readDb } from '@/lib/store';
 import type { SessionPayload, SessionUserContext } from '@/types';
 
@@ -62,6 +64,13 @@ export async function getSessionPayload(): Promise<SessionPayload | null> {
 export async function getSessionContext(): Promise<SessionUserContext | null> {
   const payload = await getSessionPayload();
   if (!payload) return null;
+
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) return null;
+    return getSessionContextFromPostgres(prisma, payload);
+  }
+
   const db = await readDb();
   const user = db.users.find((item) => item.id === payload.userId);
   const organization = db.organizations.find((item) => item.id === payload.organizationId);

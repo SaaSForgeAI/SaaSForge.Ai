@@ -27,6 +27,7 @@ AUTH_SECRET=your-long-random-secret
 5. Add both to Vercel.
 6. Set `STORAGE_PROVIDER=postgres`.
 7. Set `DEMO_MODE=false`.
+8. Set `ENABLE_DEMO_SEED=true` if you want the seeded demo workspace on an empty production database. Set it to `false` for a clean production install.
 
 If a direct `db.<project>.supabase.co:5432` hostname only resolves to IPv6 in your environment, use the pooler URL for app runtime. This is the recommended path for Vercel anyway.
 
