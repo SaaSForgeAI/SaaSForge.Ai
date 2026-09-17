@@ -3,7 +3,9 @@ import path from 'node:path';
 import { createSeedData } from '@/database/seed';
 import type { PlatformData } from '@/types';
 
-const DB_PATH = path.join(process.cwd(), 'database', 'demo-db.json');
+const DB_PATH = process.env.VERCEL
+  ? path.join('/tmp', 'saasforge-demo-db.json')
+  : path.join(process.cwd(), 'database', 'demo-db.json');
 let writeQueue: Promise<void> = Promise.resolve();
 
 async function ensureDb(): Promise<void> {
