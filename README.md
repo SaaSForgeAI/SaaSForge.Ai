@@ -38,7 +38,8 @@ Production-ready persistence using Prisma and PostgreSQL.
 ```env
 DEMO_MODE=false
 STORAGE_PROVIDER=postgres
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://POOLER-URL
+DIRECT_URL=postgresql://DIRECT-DB-URL
 ```
 
 ## Install
@@ -64,6 +65,7 @@ Core variables:
 
 Optional provider variables:
 
+- `DIRECT_URL`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `GOOGLE_CLIENT_ID`

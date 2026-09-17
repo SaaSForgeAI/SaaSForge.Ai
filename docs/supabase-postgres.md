@@ -12,7 +12,8 @@ In Vercel set:
 ```env
 DEMO_MODE=false
 STORAGE_PROVIDER=postgres
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql://POOLER-URL
+DIRECT_URL=postgresql://DIRECT-DB-URL
 APP_URL=https://your-vercel-domain.vercel.app
 AUTH_SECRET=your-long-random-secret
 ```
@@ -21,10 +22,13 @@ AUTH_SECRET=your-long-random-secret
 
 1. Create a Supabase project.
 2. Open **Project Settings → Database**.
-3. Copy the **connection string** in transaction mode.
-4. Add it to Vercel as `DATABASE_URL`.
-5. Set `STORAGE_PROVIDER=postgres`.
-6. Set `DEMO_MODE=false`.
+3. Copy the **Connection pooling** string for `DATABASE_URL`.
+4. Copy the **Direct connection** string for `DIRECT_URL`.
+5. Add both to Vercel.
+6. Set `STORAGE_PROVIDER=postgres`.
+7. Set `DEMO_MODE=false`.
+
+If a direct `db.<project>.supabase.co:5432` hostname only resolves to IPv6 in your environment, use the pooler URL for app runtime. This is the recommended path for Vercel anyway.
 
 ## Apply the schema
 
