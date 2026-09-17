@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,17 @@ export default async function DeploymentsPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const deployments = db.deployments.filter((item) => db.projects.some((project) => project.organizationId === session.organization.id && project.id === item.projectId));
   const projects = db.projects.filter((item) => item.organizationId === session.organization.id);
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="No projects ready for deployment"
+        description="Generate a SaaS first, then launch preview, staging and production releases from this control center."
+        href="/workspace/create"
+        cta="Create SaaS"
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">

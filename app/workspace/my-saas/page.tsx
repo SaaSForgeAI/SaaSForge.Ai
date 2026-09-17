@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { ProjectPreview } from '@/components/project-preview';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +10,21 @@ import { formatCurrency, formatNumber } from '@/utils/format';
 export default async function MySaasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { session, db } = await getWorkspaceData();
   const params = await searchParams;
-  const projectId = typeof params.project === 'string' ? params.project : db.projects.find((item) => item.organizationId === session.organization.id)?.id;
-  const project = db.projects.find((item) => item.id === projectId) || db.projects[0];
+  const organizationProjects = db.projects.filter((item) => item.organizationId === session.organization.id);
+  const projectId = typeof params.project === 'string' ? params.project : organizationProjects[0]?.id;
+  const project = organizationProjects.find((item) => item.id === projectId) || organizationProjects[0];
+
+  if (!project) {
+    return (
+      <EmptyState
+        title="No SaaS generated yet"
+        description="Create your first product to unlock the live preview, generated pages, versions and deployment controls."
+        href="/workspace/create"
+        cta="Create SaaS"
+      />
+    );
+  }
+
   const pages = db.projectPages.filter((item) => item.projectId === project.id);
   const versions = db.projectVersions.filter((item) => item.projectId === project.id);
 

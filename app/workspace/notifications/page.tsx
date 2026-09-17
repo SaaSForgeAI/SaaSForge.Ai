@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -7,6 +8,17 @@ import { formatDate } from '@/utils/format';
 export default async function NotificationsPage() {
   const { session, db } = await getWorkspaceData();
   const notifications = db.notifications.filter((item) => item.userId === session.user.id);
+
+  if (notifications.length === 0) {
+    return (
+      <EmptyState
+        title="No notifications yet"
+        description="Deployment alerts, billing notices, security reviews and product updates will appear here as soon as activity starts."
+        href="/workspace"
+        cta="Back to overview"
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">

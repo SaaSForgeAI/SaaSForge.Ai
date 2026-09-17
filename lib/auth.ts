@@ -30,10 +30,12 @@ function decode(token: string): SessionPayload | null {
 
 export async function createSession(payload: SessionPayload): Promise<void> {
   const cookieStore = await cookies();
+  const secure = process.env.NODE_ENV === 'production';
+
   cookieStore.set(COOKIE_NAME, encode(payload), {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure,
     path: '/',
     maxAge: 60 * 60 * 24 * 14
   });
@@ -41,7 +43,13 @@ export async function createSession(payload: SessionPayload): Promise<void> {
 
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, '', { httpOnly: true, path: '/', maxAge: 0 });
+  cookieStore.set(COOKIE_NAME, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0
+  });
 }
 
 export async function getSessionPayload(): Promise<SessionPayload | null> {

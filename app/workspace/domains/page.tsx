@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/empty-state';
 import { FormMessage } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,17 @@ export default async function DomainsPage({ searchParams }: { searchParams: Prom
   const params = await searchParams;
   const projects = db.projects.filter((item) => item.organizationId === session.organization.id);
   const domains = db.domains.filter((item) => projects.some((project) => project.id === item.projectId));
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="No projects available for domain mapping"
+        description="Create and deploy a SaaS before attaching a custom domain or subdomain."
+        href="/workspace/create"
+        cta="Create SaaS"
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">

@@ -135,6 +135,9 @@ export async function submitBuilderMessage(input: {
   const timestamp = new Date().toISOString();
 
   await updateDb((db) => {
+    const targetProject = db.projects.find((item) => item.id === input.projectId && item.organizationId === input.organizationId);
+    if (!targetProject) return db;
+
     const conversation =
       db.aiConversations.find((item) => item.projectId === input.projectId) ||
       (() => {
@@ -163,24 +166,22 @@ export async function submitBuilderMessage(input: {
     );
 
     const promptLower = input.prompt.toLowerCase();
-    const project = db.projects.find((item) => item.id === input.projectId);
-    if (project) {
-      if (promptLower.includes('blue')) project.themeAccent = '#33a8ff';
-      if (promptLower.includes('dark')) project.style = 'Dark';
-      if (promptLower.includes('customer') || promptLower.includes('contact')) {
-        db.projectPages.push({
-          id: randomId('page'),
-          projectId: project.id,
-          name: 'Customer management',
-          path: '/workspace/customers',
-          type: 'app',
-          status: 'ready',
-          description: 'List, filter and manage customers with lifecycle tags.'
-        });
-      }
-      project.updatedAt = timestamp;
-      project.stage = 'live';
+    const project = targetProject;
+    if (promptLower.includes('blue')) project.themeAccent = '#33a8ff';
+    if (promptLower.includes('dark')) project.style = 'Dark';
+    if (promptLower.includes('customer') || promptLower.includes('contact')) {
+      db.projectPages.push({
+        id: randomId('page'),
+        projectId: project.id,
+        name: 'Customer management',
+        path: '/workspace/customers',
+        type: 'app',
+        status: 'ready',
+        description: 'List, filter and manage customers with lifecycle tags.'
+      });
     }
+    project.updatedAt = timestamp;
+    project.stage = 'live';
 
     db.buildTasks.unshift(
       { id: randomId('task'), projectId: input.projectId, label: 'Analyzing request', status: 'completed', createdAt: timestamp },
@@ -223,16 +224,16 @@ export async function createDeployment(projectId: string, environment: 'preview'
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
     const project = db.projects.find((item) => item.id === projectId);
-    if (project) {
-      project.stage = environment === 'production' ? 'live' : 'building';
-      project.deploymentEnvironment = environment;
-    }
+    if (!project) return db;
+
+    project.stage = environment === 'production' ? 'live' : 'building';
+    project.deploymentEnvironment = environment;
     db.deployments.unshift({
       id: randomId('dep'),
       projectId,
       environment,
       status: 'ready',
-      url: `https://${project?.slug || 'project'}.${environment}.saasforge.app`,
+      url: `https://${project.slug}.${environment}.saasforge.app`,
       createdAt: timestamp,
       durationSeconds: 93,
       logs: ['Installing dependencies', 'Running tests', 'Publishing assets', 'Deployment ready']
@@ -275,12 +276,27 @@ export async function updateSubscription(organizationId: string, plan: BillingPl
     const subscription = db.subscriptions.find((item) => item.organizationId === organizationId);
     const value = pricing[plan][interval];
     const credits = pricing[plan].credits;
+
     if (subscription) {
       subscription.plan = plan;
       subscription.interval = interval;
       subscription.price = value;
       subscription.creditsLimit = credits;
+      subscription.status = 'active';
+      return db;
     }
+
+    db.subscriptions.push({
+      id: randomId('sub'),
+      organizationId,
+      plan,
+      interval,
+      status: 'active',
+      seats: 1,
+      price: value,
+      creditsLimit: credits,
+      renewalDate: new Date().toISOString()
+    });
   });
 }
 
@@ -302,6 +318,9 @@ export async function inviteMember(organizationId: string, email: string, role: 
 export async function addDomain(projectId: string, host: string): Promise<void> {
   const timestamp = new Date().toISOString();
   await updateDb((db) => {
+    const project = db.projects.find((item) => item.id === projectId);
+    if (!project) return db;
+
     db.domains.unshift({
       id: randomId('dom'),
       projectId,
@@ -316,7 +335,7 @@ export async function addDomain(projectId: string, host: string): Promise<void> 
 
 export async function createApiKey(organizationId: string, name: string, permissions: string[]): Promise<string> {
   const { hashSecret } = await import('@/lib/crypto');
-  const secret = `sf_live_${Math.random().toString(36).slice(2, 10)}_${Math.random().toString(36).slice(2, 10)}`;
+  const secret = `sf_live_${randomId('key').replace(/[^a-z0-9_]/gi, '').slice(0, 16)}_${randomId('sec').replace(/[^a-z0-9_]/gi, '').slice(0, 16)}`;
   const prefix = secret.slice(0, 12);
   const timestamp = new Date().toISOString();
 

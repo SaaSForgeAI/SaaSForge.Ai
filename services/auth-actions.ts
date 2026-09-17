@@ -10,10 +10,15 @@ function qs(params: Record<string, string>): string {
   return new URLSearchParams(params).toString();
 }
 
+function normalizeNextPath(input: string): string {
+  if (!input.startsWith('/') || input.startsWith('//')) return '/workspace';
+  return input;
+}
+
 export async function loginAction(formData: FormData): Promise<void> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
-  const next = String(formData.get('next') || '/workspace');
+  const next = normalizeNextPath(String(formData.get('next') || '/workspace'));
 
   const db = await readDb();
   const user = db.users.find((item) => item.email === email);
@@ -104,6 +109,58 @@ export async function registerAction(formData: FormData): Promise<void> {
       creditsLimit: 10000,
       renewalDate: timestamp
     });
+    db.integrations.push(
+      {
+        id: randomId('int'),
+        organizationId: orgId,
+        key: 'stripe',
+        name: 'Stripe',
+        description: 'Subscriptions, invoices and customer portal.',
+        status: 'Available',
+        configured: false,
+        scopes: ['Billing', 'Webhooks']
+      },
+      {
+        id: randomId('int'),
+        organizationId: orgId,
+        key: 'github',
+        name: 'GitHub',
+        description: 'Repository sync and deployment automation.',
+        status: 'Available',
+        configured: false,
+        scopes: ['Repos', 'Actions']
+      },
+      {
+        id: randomId('int'),
+        organizationId: orgId,
+        key: 'google',
+        name: 'Google',
+        description: 'OAuth, calendar sync and workspace import.',
+        status: 'Needs configuration',
+        configured: false,
+        scopes: ['OAuth', 'Calendar']
+      },
+      {
+        id: randomId('int'),
+        organizationId: orgId,
+        key: 'resend',
+        name: 'Resend',
+        description: 'Transactional email delivery.',
+        status: 'Available',
+        configured: false,
+        scopes: ['Email']
+      },
+      {
+        id: randomId('int'),
+        organizationId: orgId,
+        key: 'openai',
+        name: 'OpenAI',
+        description: 'Premium generation models for UI and code.',
+        status: 'Available',
+        configured: false,
+        scopes: ['Completions', 'Embeddings']
+      }
+    );
     db.notifications.push({
       id: randomId('not'),
       userId,

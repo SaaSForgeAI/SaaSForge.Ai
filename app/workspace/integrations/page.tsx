@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,17 @@ import { integrationAction } from '@/services/workspace-actions';
 export default async function IntegrationsPage() {
   const { session, db } = await getWorkspaceData();
   const integrations = db.integrations.filter((item) => item.organizationId === session.organization.id);
+
+  if (integrations.length === 0) {
+    return (
+      <EmptyState
+        title="No integrations provisioned yet"
+        description="Create a project or finish onboarding to seed your workspace with Stripe, GitHub, Google, email and model providers."
+        href="/workspace/create"
+        cta="Create SaaS"
+      />
+    );
+  }
 
   return (
     <div className="space-y-8">
