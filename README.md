@@ -179,11 +179,19 @@ APP_URL=https://your-app.vercel.app
 AUTH_SECRET=replace-with-a-long-random-secret
 ```
 
-After setting the environment variables, apply the schema:
+After setting the environment variables, apply the schema once manually if you want:
 
 ```bash
 npm install
 npm run db:push
+```
+
+Vercel builds now also auto-run `prisma db push` before `next build` whenever:
+
+```env
+STORAGE_PROVIDER=postgres
+DEMO_MODE=false
+DATABASE_URL=...
 ```
 
 ## Seed database
