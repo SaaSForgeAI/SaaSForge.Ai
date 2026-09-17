@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id           String        @id
+  name         String
+  slug         String        @unique
+  logo         String
+  industry     String
+  createdAt    DateTime      @map("created_at")
+  updatedAt    DateTime      @map("updated_at")
+  primaryUsers User[]        @relation("PrimaryOrganization")
+  memberships  Membership[]
+  projects     Project[]
+  aiUsage      AIUsage[]
+  integrations Integration[]
+  subscriptions Subscription[]
+  invoices     Invoice[]
+  apiKeys      ApiKey[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id                    String         @id
+  email                 String         @unique
+  passwordHash          String         @map("password_hash")
+  name                  String
+  avatar                String
+  title                 String
+  verified              Boolean        @default(false)
+  verificationToken     String?        @map("verification_token")
+  resetToken            String?        @map("reset_token")
+  primaryOrganizationId String         @map("primary_organization_id")
+  onboardingCompleted   Boolean        @default(false) @map("onboarding_completed")
+  createdAt             DateTime       @map("created_at")
+  updatedAt             DateTime       @map("updated_at")
+  primaryOrganization   Organization   @relation("PrimaryOrganization", fields: [primaryOrganizationId], references: [id], onDelete: Cascade)
+  memberships           Membership[]
+  notifications         Notification[]
+  comments              Comment[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           String
+  presence       String
+  createdAt      DateTime     @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("memberships")
+}
+
+model Project {
+  id                    String           @id
+  organizationId        String           @map("organization_id")
+  name                  String
+  slug                  String
+  description           String
+  category              String
+  prompt                String
+  maturity              String
+  style                 String
+  stage                 String
+  status                String
+  themeAccent           String           @map("theme_accent")
+  visitors              Int              @default(0)
+  users                 Int              @default(0)
+  revenueMrr            Int              @default(0) @map("revenue_mrr")
+  deploymentEnvironment String           @default("preview") @map("deployment_environment")
+  createdAt             DateTime         @map("created_at")
+  updatedAt             DateTime         @map("updated_at")
+  organization          Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions              ProjectVersion[]
+  files                 ProjectFile[]
+  pages                 ProjectPage[]
+  conversations         AIConversation[]
+  aiUsage               AIUsage[]
+  deployments           Deployment[]
+  domains               Domain[]
+  comments              Comment[]
+  buildTasks            BuildTask[]
+
+  @@unique([organizationId, slug], map: "projects_org_slug_idx")
+  @@map("projects")
+}
+
+model ProjectVersion {
+  id        String   @id
+  projectId String   @map("project_id")
+  name      String
+  summary   String
+  createdAt DateTime @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_versions")
+}
+
+model ProjectFile {
+  id        String   @id
+  projectId String   @map("project_id")
+  path      String
+  kind      String
+  updatedAt DateTime @map("updated_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_files")
+}
+
+model ProjectPage {
+  id          String   @id
+  projectId   String   @map("project_id")
+  name        String
+  path        String
+  type        String
+  status      String
+  description String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_pages")
+}
+
+model AIConversation {
+  id        String      @id
+  projectId String      @map("project_id")
+  title     String
+  agent     String
+  createdAt DateTime    @map("created_at")
+  updatedAt DateTime    @map("updated_at")
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages  AIMessage[]
+
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String         @id
+  conversationId String         @map("conversation_id")
+  role           String
+  content        String
+  createdAt      DateTime       @map("created_at")
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_messages")
+}
+
+model AIUsage {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  projectId      String       @map("project_id")
+  action         String
+  model          String
+  credits        Int
+  createdAt      DateTime     @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt], map: "ai_usage_org_created_idx")
+  @@map("ai_usage")
+}
+
+model Template {
+  id              String   @id
+  slug            String   @unique
+  name            String
+  category        String
+  description     String
+  features        String[]
+  stack           String[]
+  rating          Float
+  uses            Int
+  previewGradient String   @map("preview_gradient")
+
+  @@map("templates")
+}
+
+model Deployment {
+  id              String   @id
+  projectId       String   @map("project_id")
+  environment     String
+  status          String
+  url             String
+  createdAt       DateTime @map("created_at")
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  logs            String[]
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("deployments")
+}
+
+model Domain {
+  id           String   @id
+  projectId    String   @map("project_id")
+  host         String
+  status       String
+  sslActive    Boolean  @default(false) @map("ssl_active")
+  instructions String
+  createdAt    DateTime @map("created_at")
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("domains")
+}
+
+model Integration {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  key            String
+  name           String
+  description    String
+  status         String
+  configured     Boolean      @default(false)
+  connectedAt    DateTime?    @map("connected_at")
+  scopes         String[]
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key], map: "integrations_org_key_idx")
+  @@map("integrations")
+}
+
+model Subscription {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  plan           String
+  interval       String
+  status         String
+  seats          Int          @default(1)
+  price          Int          @default(0)
+  creditsLimit   Int          @default(10000) @map("credits_limit")
+  renewalDate    DateTime     @map("renewal_date")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  number         String
+  status         String
+  amount         Int
+  currency       String
+  issuedAt       DateTime     @map("issued_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+model Notification {
+  id        String    @id
+  userId    String    @map("user_id")
+  title     String
+  body      String
+  type      String
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @map("created_at")
+  cta       String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model ApiKey {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  name           String
+  prefix         String
+  secretHash     String       @map("secret_hash")
+  permissions    String[]
+  lastUsedAt     DateTime?    @map("last_used_at")
+  revokedAt      DateTime?    @map("revoked_at")
+  createdAt      DateTime     @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  actor          String
+  action         String
+  target         String
+  createdAt      DateTime     @map("created_at")
+  metadata       String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+model Comment {
+  id        String   @id
+  projectId String   @map("project_id")
+  authorId  String   @map("author_id")
+  resource  String
+  body      String
+  createdAt DateTime @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model BuildTask {
+  id        String   @id
+  projectId String   @map("project_id")
+  label     String
+  status    String
+  createdAt DateTime @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("build_tasks")
+}

@@ -1,4 +1,6 @@
 -- SaaSForge AI production schema (PostgreSQL-oriented)
+-- Source of truth: prisma/schema.prisma
+-- Use this SQL as a readable reference, or run `npm run db:push` to sync the Prisma schema directly to Supabase/Postgres.
 
 create table organizations (
   id text primary key,
@@ -220,5 +222,13 @@ create table comments (
   author_id text not null references users(id) on delete cascade,
   resource text not null,
   body text not null,
+  created_at timestamptz not null default now()
+);
+
+create table build_tasks (
+  id text primary key,
+  project_id text not null references projects(id) on delete cascade,
+  label text not null,
+  status text not null,
   created_at timestamptz not null default now()
 );

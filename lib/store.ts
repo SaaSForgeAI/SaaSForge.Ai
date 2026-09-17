@@ -1,6 +1,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createSeedData } from '@/database/seed';
+import { env } from '@/lib/env';
+import { getPrismaClient, isPostgresStorageEnabled } from '@/lib/prisma';
+import { ensurePostgresSeed, readPostgresSnapshot, writePostgresSnapshot } from '@/lib/store-postgres';
 import type { PlatformData } from '@/types';
 
 const DB_PATH = process.env.VERCEL
@@ -10,7 +13,7 @@ const DB_PATH = process.env.VERCEL
 let mutationQueue: Promise<unknown> = Promise.resolve();
 let memoryDb: PlatformData | null = null;
 
-async function persistDirect(data: PlatformData): Promise<void> {
+async function persistDemoSnapshot(data: PlatformData): Promise<void> {
   const snapshot = structuredClone(data);
 
   try {
@@ -24,18 +27,18 @@ async function persistDirect(data: PlatformData): Promise<void> {
   }
 }
 
-async function ensureDb(): Promise<void> {
+async function ensureDemoDb(): Promise<void> {
   if (memoryDb) return;
 
   try {
     await fs.access(DB_PATH);
   } catch {
-    await persistDirect(createSeedData());
+    await persistDemoSnapshot(createSeedData());
   }
 }
 
-export async function readDb(): Promise<PlatformData> {
-  await ensureDb();
+async function readDemoDb(): Promise<PlatformData> {
+  await ensureDemoDb();
 
   if (memoryDb) {
     return structuredClone(memoryDb);
@@ -46,14 +49,41 @@ export async function readDb(): Promise<PlatformData> {
     return JSON.parse(content) as PlatformData;
   } catch {
     const seed = createSeedData();
-    await persistDirect(seed);
+    await persistDemoSnapshot(seed);
     return structuredClone(seed);
   }
 }
 
+async function writeDemoDb(data: PlatformData): Promise<void> {
+  await persistDemoSnapshot(data);
+}
+
+function shouldUsePostgres(): boolean {
+  return isPostgresStorageEnabled() && !env.demoMode;
+}
+
+export async function readDb(): Promise<PlatformData> {
+  if (shouldUsePostgres()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await ensurePostgresSeed(prisma);
+    return readPostgresSnapshot(prisma);
+  }
+
+  return readDemoDb();
+}
+
 export async function writeDb(data: PlatformData): Promise<void> {
   const task = mutationQueue.then(async () => {
-    await persistDirect(data);
+    if (shouldUsePostgres()) {
+      const prisma = getPrismaClient();
+      if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+      await ensurePostgresSeed(prisma);
+      await writePostgresSnapshot(prisma, data);
+      return;
+    }
+
+    await writeDemoDb(data);
   });
 
   mutationQueue = task.catch(() => undefined);
@@ -64,7 +94,15 @@ export async function updateDb(mutator: (data: PlatformData) => PlatformData | v
   const task = mutationQueue.then(async () => {
     const current = await readDb();
     const result = mutator(current) || current;
-    await persistDirect(result);
+
+    if (shouldUsePostgres()) {
+      const prisma = getPrismaClient();
+      if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+      await writePostgresSnapshot(prisma, result);
+      return result;
+    }
+
+    await writeDemoDb(result);
     return result;
   });
 
