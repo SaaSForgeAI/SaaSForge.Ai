@@ -321,9 +321,9 @@ export async function updateSubscription(organizationId: string, plan: BillingPl
 
   const pricing = {
     Free: { monthly: 0, yearly: 0, credits: 10000 },
-    Pro: { monthly: 39, yearly: 31, credits: 100000 },
-    Business: { monthly: 129, yearly: 103, credits: 500000 },
-    Enterprise: { monthly: 399, yearly: 319, credits: 2000000 }
+    Pro: { monthly: 39, yearly: 372, credits: 100000 },
+    Business: { monthly: 129, yearly: 1236, credits: 500000 },
+    Enterprise: { monthly: 399, yearly: 3828, credits: 2000000 }
   } as const;
 
   await updateDb((db) => {
@@ -337,6 +337,12 @@ export async function updateSubscription(organizationId: string, plan: BillingPl
       subscription.price = value;
       subscription.creditsLimit = credits;
       subscription.status = 'active';
+      subscription.provider = 'internal';
+      subscription.stripePriceId = undefined;
+      subscription.stripeSubscriptionId = undefined;
+      subscription.cancelAtPeriodEnd = false;
+      subscription.currentPeriodStart = undefined;
+      subscription.currentPeriodEnd = undefined;
       return db;
     }
 
@@ -349,7 +355,8 @@ export async function updateSubscription(organizationId: string, plan: BillingPl
       seats: 1,
       price: value,
       creditsLimit: credits,
-      renewalDate: new Date().toISOString()
+      renewalDate: new Date().toISOString(),
+      provider: 'internal'
     });
   });
 }

@@ -517,7 +517,14 @@ export async function writePostgresSnapshot(prisma: PrismaClient, data: Platform
           seats: item.seats,
           price: item.price,
           creditsLimit: item.creditsLimit,
-          renewalDate: new Date(item.renewalDate)
+          renewalDate: new Date(item.renewalDate),
+          provider: item.provider ?? 'internal',
+          stripeCustomerId: item.stripeCustomerId ?? null,
+          stripeSubscriptionId: item.stripeSubscriptionId ?? null,
+          stripePriceId: item.stripePriceId ?? null,
+          cancelAtPeriodEnd: item.cancelAtPeriodEnd ?? false,
+          currentPeriodStart: toDate(item.currentPeriodStart),
+          currentPeriodEnd: toDate(item.currentPeriodEnd)
         }))
       });
     }

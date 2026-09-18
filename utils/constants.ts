@@ -7,19 +7,19 @@ export const PLAN_OPTIONS = [
   },
   {
     name: 'Pro',
-    price: { monthly: 39, yearly: 31 },
+    price: { monthly: 39, yearly: 372 },
     credits: 100000,
     features: ['Unlimited projects', 'Custom domains', 'Analytics', 'GitHub sync', 'Collaboration']
   },
   {
     name: 'Business',
-    price: { monthly: 129, yearly: 103 },
+    price: { monthly: 129, yearly: 1236 },
     credits: 500000,
     features: ['Advanced permissions', 'Priority builds', 'Usage controls', 'Team workflows']
   },
   {
     name: 'Enterprise',
-    price: { monthly: 399, yearly: 319 },
+    price: { monthly: 399, yearly: 3828 },
     credits: 2000000,
     features: ['SSO', 'Audit logs', 'Dedicated support', 'Private deployment options']
   }

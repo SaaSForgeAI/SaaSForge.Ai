@@ -371,9 +371,9 @@ export async function disconnectIntegrationInPostgres(prisma: PrismaClient, orga
 export async function updateSubscriptionInPostgres(prisma: PrismaClient, organizationId: string, plan: BillingPlan, interval: BillingInterval): Promise<void> {
   const pricing = {
     Free: { monthly: 0, yearly: 0, credits: 10000 },
-    Pro: { monthly: 39, yearly: 31, credits: 100000 },
-    Business: { monthly: 129, yearly: 103, credits: 500000 },
-    Enterprise: { monthly: 399, yearly: 319, credits: 2000000 }
+    Pro: { monthly: 39, yearly: 372, credits: 100000 },
+    Business: { monthly: 129, yearly: 1236, credits: 500000 },
+    Enterprise: { monthly: 399, yearly: 3828, credits: 2000000 }
   } as const;
 
   const value = pricing[plan][interval];
@@ -388,7 +388,13 @@ export async function updateSubscriptionInPostgres(prisma: PrismaClient, organiz
         interval,
         price: value,
         creditsLimit: credits,
-        status: 'active'
+        status: 'active',
+        provider: 'internal',
+        stripePriceId: null,
+        stripeSubscriptionId: null,
+        cancelAtPeriodEnd: false,
+        currentPeriodStart: null,
+        currentPeriodEnd: null
       }
     });
     return;

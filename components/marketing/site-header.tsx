@@ -14,8 +14,8 @@ const nav = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#090b10]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4 lg:px-8">
-        <Logo />
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-6 sm:px-6 sm:py-4 lg:px-8">
+        <div className="min-w-0"><Logo /></div>
         <nav className="hidden items-center gap-6 text-sm text-white/55 lg:flex">
           {nav.map((item) => (
             <Link key={item.href} href={item.href} className="transition hover:text-white">
@@ -23,12 +23,12 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/auth/login" className="text-sm text-white/65 transition hover:text-white">
             Sign in
           </Link>
           <Link href="/auth/register">
-            <Button>Get started</Button>
+            <Button className="px-3 py-2 sm:px-4">Get started</Button>
           </Link>
         </div>
       </div>

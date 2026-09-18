@@ -23,7 +23,7 @@ export default async function HomePage() {
         <section className="mx-auto max-w-7xl px-6 pb-24 pt-16 lg:px-8 lg:pt-24">
           <div className="mx-auto max-w-4xl text-center">
             <Badge tone="info">Premium AI SaaS generator</Badge>
-            <h1 className="mt-8 text-balance text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight text-white sm:mt-8 sm:text-6xl lg:text-7xl">
               Build your SaaS with AI.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-balance text-lg leading-8 text-white/60 sm:text-xl">
@@ -52,7 +52,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section id="product" className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+        <section id="product" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <SectionHeading
             eyebrow="Product workflow"
             title="From prompt to production-ready SaaS"

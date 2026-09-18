@@ -26,6 +26,7 @@ export interface Organization {
   slug: string;
   logo: string;
   industry: string;
+  stripeCustomerId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -164,21 +165,31 @@ export interface Subscription {
   organizationId: string;
   plan: BillingPlan;
   interval: BillingInterval;
-  status: 'active' | 'trialing' | 'past_due';
+  status: 'active' | 'trialing' | 'past_due' | 'canceled';
   seats: number;
   price: number;
   creditsLimit: number;
   renewalDate: string;
+  provider?: 'internal' | 'stripe';
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripePriceId?: string;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
 }
 
 export interface Invoice {
   id: string;
   organizationId: string;
   number: string;
-  status: 'paid' | 'open';
+  status: 'paid' | 'open' | 'draft' | 'void' | 'uncollectible';
   amount: number;
   currency: string;
   issuedAt: string;
+  stripeInvoiceId?: string;
+  hostedInvoiceUrl?: string;
+  invoicePdfUrl?: string;
 }
 
 export interface Notification {

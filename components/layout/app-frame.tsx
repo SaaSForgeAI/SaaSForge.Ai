@@ -24,9 +24,9 @@ export function AppFrame({
   return (
     <div className="min-h-screen lg:flex">
       <Sidebar currentPath={pathname} />
-      <div className="min-w-0 flex-1 pb-24 lg:pb-0">
+      <div className="min-w-0 flex-1 pb-32 lg:pb-0">
         <Topbar user={user} notifications={notifications} projects={projects} templates={templates} />
-        <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">{children}</main>
       </div>
       <MobileNav currentPath={pathname} />
     </div>

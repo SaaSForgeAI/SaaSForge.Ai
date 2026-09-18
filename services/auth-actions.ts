@@ -171,7 +171,8 @@ export async function registerAction(formData: FormData): Promise<void> {
       seats: 1,
       price: 0,
       creditsLimit: 10000,
-      renewalDate: timestamp
+      renewalDate: timestamp,
+      provider: 'internal'
     });
     db.integrations.push(
       {

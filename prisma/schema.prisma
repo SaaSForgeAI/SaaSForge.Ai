@@ -9,22 +9,23 @@ datasource db {
 }
 
 model Organization {
-  id           String        @id
-  name         String
-  slug         String        @unique
-  logo         String
-  industry     String
-  createdAt    DateTime      @map("created_at")
-  updatedAt    DateTime      @map("updated_at")
-  primaryUsers User[]        @relation("PrimaryOrganization")
-  memberships  Membership[]
-  projects     Project[]
-  aiUsage      AIUsage[]
-  integrations Integration[]
-  subscriptions Subscription[]
-  invoices     Invoice[]
-  apiKeys      ApiKey[]
-  auditLogs    AuditLog[]
+  id               String         @id
+  name             String
+  slug             String         @unique
+  logo             String
+  industry         String
+  stripeCustomerId String?        @unique @map("stripe_customer_id")
+  createdAt        DateTime       @map("created_at")
+  updatedAt        DateTime       @map("updated_at")
+  primaryUsers     User[]         @relation("PrimaryOrganization")
+  memberships      Membership[]
+  projects         Project[]
+  aiUsage          AIUsage[]
+  integrations     Integration[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  apiKeys          ApiKey[]
+  auditLogs        AuditLog[]
 
   @@map("organizations")
 }
@@ -122,14 +123,14 @@ model ProjectFile {
 }
 
 model ProjectPage {
-  id          String   @id
-  projectId   String   @map("project_id")
+  id          String  @id
+  projectId   String  @map("project_id")
   name        String
   path        String
   type        String
   status      String
   description String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_pages")
 }
@@ -232,29 +233,39 @@ model Integration {
 }
 
 model Subscription {
-  id             String       @id
-  organizationId String       @map("organization_id")
-  plan           String
-  interval       String
-  status         String
-  seats          Int          @default(1)
-  price          Int          @default(0)
-  creditsLimit   Int          @default(10000) @map("credits_limit")
-  renewalDate    DateTime     @map("renewal_date")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                   String       @id
+  organizationId       String       @map("organization_id")
+  plan                 String
+  interval             String
+  status               String
+  seats                Int          @default(1)
+  price                Int          @default(0)
+  creditsLimit         Int          @default(10000) @map("credits_limit")
+  renewalDate          DateTime     @map("renewal_date")
+  provider             String       @default("internal")
+  stripeCustomerId     String?      @map("stripe_customer_id")
+  stripeSubscriptionId String?      @unique @map("stripe_subscription_id")
+  stripePriceId        String?      @map("stripe_price_id")
+  cancelAtPeriodEnd    Boolean      @default(false) @map("cancel_at_period_end")
+  currentPeriodStart   DateTime?    @map("current_period_start")
+  currentPeriodEnd     DateTime?    @map("current_period_end")
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
 
 model Invoice {
-  id             String       @id
-  organizationId String       @map("organization_id")
-  number         String
-  status         String
-  amount         Int
-  currency       String
-  issuedAt       DateTime     @map("issued_at")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id               String       @id
+  organizationId   String       @map("organization_id")
+  number           String
+  status           String
+  amount           Int
+  currency         String
+  issuedAt         DateTime     @map("issued_at")
+  stripeInvoiceId  String?      @unique @map("stripe_invoice_id")
+  hostedInvoiceUrl String?      @map("hosted_invoice_url")
+  invoicePdfUrl    String?      @map("invoice_pdf_url")
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("invoices")
 }

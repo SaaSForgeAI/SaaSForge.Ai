@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PLAN_OPTIONS } from '@/utils/constants';
+import { formatCurrency } from '@/utils/format';
 
 export function PricingClient() {
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly');
@@ -28,26 +29,36 @@ export function PricingClient() {
         </div>
       </div>
       <div className="mt-12 grid gap-5 lg:grid-cols-4">
-        {PLAN_OPTIONS.map((plan) => (
-          <Card key={plan.name} className={plan.name === 'Business' ? 'border-violet-400/25 shadow-glow' : ''}>
-            <p className="text-sm text-white/45">{plan.name}</p>
-            <div className="mt-5 flex items-end gap-2">
-              <span className="text-4xl font-semibold text-white">${plan.price[interval]}</span>
-              <span className="pb-1 text-sm text-white/40">/ month</span>
-            </div>
-            <p className="mt-2 text-sm text-white/55">{plan.credits.toLocaleString('en-US')} AI credits included</p>
-            <div className="mt-6 space-y-3 text-sm text-white/60">
-              {plan.features.map((feature) => (
-                <p key={feature}>• {feature}</p>
-              ))}
-            </div>
-            <Link href="/auth/register" className="mt-8 block">
-              <Button fullWidth variant={plan.name === 'Business' ? 'primary' : 'secondary'}>
-                {plan.name === 'Enterprise' ? 'Contact sales' : 'Get started'}
-              </Button>
-            </Link>
-          </Card>
-        ))}
+        {PLAN_OPTIONS.map((plan) => {
+          const yearlyMonthlyEquivalent = plan.price.yearly / 12;
+          const yearlySavings = Math.max(0, plan.price.monthly * 12 - plan.price.yearly);
+
+          return (
+            <Card key={plan.name} className={plan.name === 'Business' ? 'border-violet-400/25 shadow-glow' : ''}>
+              <p className="text-sm text-white/45">{plan.name}</p>
+              <div className="mt-5 flex items-end gap-2">
+                <span className="text-4xl font-semibold text-white">{formatCurrency(plan.price[interval])}</span>
+                <span className="pb-1 text-sm text-white/40">{interval === 'monthly' ? '/ month' : '/ year'}</span>
+              </div>
+              <p className="mt-2 text-sm text-white/55">
+                {interval === 'monthly'
+                  ? 'Billed monthly'
+                  : `${formatCurrency(yearlyMonthlyEquivalent)} / month billed annually${yearlySavings > 0 ? ` · save ${formatCurrency(yearlySavings)} / year` : ''}`}
+              </p>
+              <p className="mt-3 text-sm text-white/55">{plan.credits.toLocaleString('en-US')} AI credits included</p>
+              <div className="mt-6 space-y-3 text-sm text-white/60">
+                {plan.features.map((feature) => (
+                  <p key={feature}>• {feature}</p>
+                ))}
+              </div>
+              <Link href="/auth/register" className="mt-8 block">
+                <Button fullWidth variant={plan.name === 'Business' ? 'primary' : 'secondary'}>
+                  {plan.name === 'Enterprise' ? 'Contact sales' : 'Get started'}
+                </Button>
+              </Link>
+            </Card>
+          );
+        })}
       </div>
     </main>
   );

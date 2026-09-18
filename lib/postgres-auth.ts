@@ -31,6 +31,7 @@ function toSessionContext(result: {
         slug: string;
         logo: string;
         industry: string;
+        stripeCustomerId: string | null;
         createdAt: Date;
         updatedAt: Date;
       };
@@ -62,6 +63,7 @@ function toSessionContext(result: {
       slug: membership.organization.slug,
       logo: membership.organization.logo,
       industry: membership.organization.industry,
+      stripeCustomerId: membership.organization.stripeCustomerId ?? undefined,
       createdAt: membership.organization.createdAt.toISOString(),
       updatedAt: membership.organization.updatedAt.toISOString()
     },
@@ -179,7 +181,8 @@ export async function createWorkspaceUser(prisma: PrismaClient, input: {
         seats: 1,
         price: 0,
         creditsLimit: 10000,
-        renewalDate: timestamp
+        renewalDate: timestamp,
+        provider: 'internal'
       }
     });
 

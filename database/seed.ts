@@ -45,6 +45,7 @@ export function createSeedData(): PlatformData {
         slug: 'forge-labs',
         logo: 'FL',
         industry: 'AI SaaS',
+        stripeCustomerId: 'cus_demo_business',
         createdAt: now,
         updatedAt: now
       }

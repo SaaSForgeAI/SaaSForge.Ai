@@ -78,7 +78,14 @@ export async function getSessionContext(): Promise<SessionUserContext | null> {
     (item) => item.userId === payload.userId && item.organizationId === payload.organizationId
   );
   if (!user || !organization || !membership) return null;
-  return { user, organization, membership };
+  return {
+    user,
+    organization: {
+      ...organization,
+      stripeCustomerId: organization.stripeCustomerId
+    },
+    membership
+  };
 }
 
 export async function requireSession(): Promise<SessionUserContext> {

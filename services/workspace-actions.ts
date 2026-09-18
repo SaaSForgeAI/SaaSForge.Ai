@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
+import { buildAbsoluteUrl, getStripeConfigStatus } from '@/lib/billing';
 import {
   updateOnboardingState,
   updateOrganizationProfile,
@@ -9,6 +10,10 @@ import {
 } from '@/lib/postgres-auth';
 import { getPrismaClient, shouldUsePostgresStorage } from '@/lib/prisma';
 import { updateDb } from '@/lib/store';
+import {
+  createStripeCheckoutUrl,
+  createStripeCustomerPortalUrl
+} from '@/services/billing';
 import {
   addDomain,
   connectIntegration,
@@ -122,6 +127,63 @@ export async function subscriptionAction(formData: FormData): Promise<void> {
   redirect('/workspace/billing?success=Subscription updated. Stripe checkout can be connected via environment variables.');
 }
 
+export async function startCheckoutAction(formData: FormData): Promise<void> {
+  const { user, organization } = await requireSession();
+  const plan = String(formData.get('plan') || 'Free') as BillingPlan;
+  const interval = String(formData.get('interval') || 'monthly') as BillingInterval;
+  const stripe = getStripeConfigStatus();
+
+  if (!stripe.enabled) {
+    await updateSubscription(organization.id, plan, interval);
+    redirect('/workspace/billing?success=Stripe is not fully configured here yet, so the subscription was updated in internal billing mode.');
+  }
+
+  if (plan === 'Free') {
+    if (organization.stripeCustomerId) {
+      redirect('/workspace/billing?error=Use the Stripe customer portal to cancel or downgrade from a paid Stripe subscription.');
+    }
+
+    await updateSubscription(organization.id, plan, interval);
+    redirect('/workspace/billing?success=Free plan activated.');
+  }
+
+  let url = '';
+  try {
+    url = await createStripeCheckoutUrl({
+      organizationId: organization.id,
+      organizationName: organization.name,
+      userId: user.id,
+      email: user.email,
+      plan,
+      interval,
+      successUrl: buildAbsoluteUrl('/workspace/billing?success=Stripe checkout completed. Your subscription will sync in a few seconds.'),
+      cancelUrl: buildAbsoluteUrl('/workspace/billing?error=Stripe checkout was canceled.')
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to create Stripe Checkout session.';
+    redirect(`/workspace/billing?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect(url);
+}
+
+export async function manageBillingPortalAction(): Promise<void> {
+  const { organization } = await requireSession();
+
+  let url = '';
+  try {
+    url = await createStripeCustomerPortalUrl({
+      organizationId: organization.id,
+      returnUrl: buildAbsoluteUrl('/workspace/billing?success=Returned from Stripe customer portal.')
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to open Stripe customer portal.';
+    redirect(`/workspace/billing?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect(url);
+}
+
 export async function inviteMemberAction(formData: FormData): Promise<void> {
   const { organization } = await requireSession();
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -152,6 +214,17 @@ export async function updateAccountAction(formData: FormData): Promise<void> {
   const { user } = await requireSession();
   const name = String(formData.get('name') || '').trim();
   const title = String(formData.get('title') || '').trim();
+
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await updateUserProfile(prisma, user.id, {
+      name: name || user.name,
+      title: title || user.title
+    });
+    redirect('/workspace/settings?tab=account&success=Profile updated.');
+  }
+
   await updateDb((db) => {
     const current = db.users.find((item) => item.id === user.id);
     if (current) {
@@ -167,6 +240,17 @@ export async function updateWorkspaceAction(formData: FormData): Promise<void> {
   const { organization } = await requireSession();
   const name = String(formData.get('name') || '').trim();
   const industry = String(formData.get('industry') || '').trim();
+
+  if (shouldUsePostgresStorage()) {
+    const prisma = getPrismaClient();
+    if (!prisma) throw new Error('PostgreSQL storage is enabled but Prisma client is unavailable.');
+    await updateOrganizationProfile(prisma, organization.id, {
+      name: name || organization.name,
+      industry: industry || organization.industry
+    });
+    redirect('/workspace/settings?tab=workspace&success=Workspace updated.');
+  }
+
   await updateDb((db) => {
     const current = db.organizations.find((item) => item.id === organization.id);
     if (current) {
