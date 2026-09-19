@@ -21,10 +21,19 @@ const shouldSyncDatabase =
   Boolean(process.env.DATABASE_URL);
 
 if (shouldSyncDatabase) {
+  const prismaEnv = process.env.DIRECT_URL
+    ? {}
+    : process.env.DATABASE_URL
+      ? { DIRECT_URL: process.env.DATABASE_URL }
+      : {};
+
   console.log('→ PostgreSQL mode detected: syncing Prisma schema before Next.js build');
-  await run('npx', ['prisma', 'db', 'push', '--skip-generate']);
+  if (!process.env.DIRECT_URL && prismaEnv.DIRECT_URL) {
+    console.log('→ DIRECT_URL is not set; falling back to DATABASE_URL for Prisma schema sync');
+  }
+  await run('npx', ['prisma', 'db', 'push', '--skip-generate'], prismaEnv);
 } else {
   console.log('→ Demo storage mode detected: skipping Prisma schema sync');
 }
 
-await run('next', ['build']);
+await run('npx', ['next', 'build']);
